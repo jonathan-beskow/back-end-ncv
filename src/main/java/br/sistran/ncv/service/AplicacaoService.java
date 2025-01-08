@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -84,14 +85,23 @@ public class AplicacaoService {
 
     public Aplicacao update(Long id, Aplicacao aplicacao) {
         Aplicacao newObj = findById(id);
+
+        // Verifica se houve mudança no status
+        if (!Objects.equals(newObj.getStatusAplicacaoCodigo(), aplicacao.getStatusAplicacaoCodigo())) {
+            newObj.adicionarHistorico(aplicacao.getStatusAplicacaoCodigo(), LocalDate.now());
+        }
+
         newObj.setNomeAplicacao(aplicacao.getNomeAplicacao());
         newObj.setIc(aplicacao.getIc());
         newObj.setRepositorio(aplicacao.getRepositorio());
         newObj.setDataChegada(populaDate(aplicacao));
-        newObj.setStatusAplicacaoCodigo(populaStatus(aplicacao));
+        newObj.setStatusAplicacaoCodigo(aplicacao.getStatusAplicacaoCodigo());
         newObj.setBsResponsavelCodigo(aplicacao.getBsResponsavelCodigo());
-        return aplicacaoRepository.saveAndFlush(aplicacao);
+
+        // Salva o objeto atualizado no banco
+        return aplicacaoRepository.saveAndFlush(newObj);
     }
+
 
     public void delete(Long id) {
         findById(id);
