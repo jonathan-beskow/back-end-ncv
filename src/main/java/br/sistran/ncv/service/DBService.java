@@ -1,9 +1,10 @@
 package br.sistran.ncv.service;
 
 import br.sistran.ncv.model.Aplicacao;
+import br.sistran.ncv.model.Apontamento;
 import br.sistran.ncv.model.HistoricoDeMudanca;
-import br.sistran.ncv.model.enums.BSResponsavel;
-import br.sistran.ncv.model.enums.StatusAplicacao;
+import br.sistran.ncv.model.LancamentoHoras;
+import br.sistran.ncv.model.enums.TipoApontamento;
 import br.sistran.ncv.repository.AplicacaoRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,93 +20,69 @@ public class DBService {
     @Autowired
     private AplicacaoRepository aplicacaoRepository;
 
+    @Autowired
+    private AplicacaoService aplicacaoService;
 
     @PostConstruct
     public void instanciaDB() {
         LocalDate now = LocalDate.now();
-        LocalDate oneYearAgo = now.minusYears(1);
-        LocalDate sixMonthsAgo = now.minusMonths(6);
-        LocalDate oneDayAgo = now.minusDays(1);
-        HistoricoDeMudanca umAno = new HistoricoDeMudanca(0, oneYearAgo);
-        HistoricoDeMudanca seisMeses = new HistoricoDeMudanca(1, sixMonthsAgo);
-        HistoricoDeMudanca umDia = new HistoricoDeMudanca(2, oneDayAgo);
-        List<HistoricoDeMudanca> listaDeMudanca = new ArrayList<>(List.of(umAno, seisMeses, umDia));
-        List<HistoricoDeMudanca> listaVazia = new ArrayList<>();
-        Aplicacao lexw = new Aplicacao(
+
+        // Criar histórico de mudanças
+        List<HistoricoDeMudanca> historicoDeMudanca = List.of(
+                new HistoricoDeMudanca(0, now.minusYears(1)),
+                new HistoricoDeMudanca(1, now.minusMonths(6))
+        );
+
+        // Criar lançamentos de horas
+        List<LancamentoHoras> lancamentosHoras = new ArrayList<>();
+        lancamentosHoras.add(new LancamentoHoras("João", 8.0, now.minusDays(2)));
+        lancamentosHoras.add(new LancamentoHoras("Maria", 6.0, now.minusDays(1)));
+
+        // Criar aplicações
+        Aplicacao aplicacao1 = new Aplicacao(
                 null,
                 "LEXW-BsLexWeb",
                 now,
-                "http://svn.dsv.bradseg.com.br/svn/lexw_bslexweb/branches/lexw_bslexweb_branch_2.1.85.1",
-                "https://ic.dsv.bradseg.com.br/build/job/LEXW-BsLexWeb-branch-2.1.85.1/",
+                "http://svn.lexweb.com",
+                "http://ci.lexweb.com",
                 0,
-                0,
-                listaVazia
+                1,
+                historicoDeMudanca
         );
 
-        Aplicacao gcti = new Aplicacao(
-                null,
-                "GCTI-Acompanhamento",
-                now,
-                "SVN GCTI",
-                "IC GCTI",
-                3,
-                4,
-                listaDeMudanca
-        );
-
-        Aplicacao vdol = new Aplicacao(
+        Aplicacao aplicacao2 = new Aplicacao(
                 null,
                 "VDOL-VendaOnline",
                 now,
-                "http://svn.dsv.bradseg.com.br/VDOL-VendaOnline",
-                "https://ic.dsv.bradseg.com.br/build/job/VDOL-VendaOnline/",
-                0,
-                0,
-                listaVazia
-        );
-
-        Aplicacao vprs = new Aplicacao(
-                null,
-                "VPRS-AcompCarteiras",
-                now,
-                "http://svn.dsv.bradseg.com.br/VPRS-AcompCarteiras",
-                "https://ic.dsv.bradseg.com.br/build/job/VPRS-AcompCarteiras/",
-                2,
-                2,
-                listaVazia
-        );
-
-        Aplicacao sares = new Aplicacao(
-                null,
-                "SARE-GestaoSinitro",
-                now,
-                "http://svn.dsv.bradseg.com.br/SARE-GestaoSinitro",
-                "https://ic.dsv.bradseg.com.br/build/job/SARE-GestaoSinitro/",
+                "http://svn.vdol.com",
+                "http://ci.vdol.com",
                 1,
-                1,
-                listaVazia
+                3,
+                historicoDeMudanca
         );
 
-        Aplicacao sareg = new Aplicacao(
-                null,
-                "SARE-GestaoRegulacao",
-                now,
-                "http://svn.dsv.bradseg.com.br/SARE-GestaoRegulacao",
-                "https://ic.dsv.bradseg.com.br/build/job/SARE-GestaoRegulacao/",
-                1,
-                5,
-                listaVazia
-        );
+        aplicacaoRepository.saveAndFlush(aplicacao1);
+        aplicacaoRepository.saveAndFlush(aplicacao2);
 
+        // Adicionar apontamentos às aplicações
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.CRITICO, 1500);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.ALTO, 600);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.MEDIO, 150);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.BAIXO, 2000);
 
+        aplicacao2.adicionarOuAtualizarApontamento(TipoApontamento.CRITICO, 700);
+        aplicacao2.adicionarOuAtualizarApontamento(TipoApontamento.ALTO, 350);
+        aplicacao2.adicionarOuAtualizarApontamento(TipoApontamento.MEDIO, 16);
+        aplicacao2.adicionarOuAtualizarApontamento(TipoApontamento.BAIXO, 847);
 
-        aplicacaoRepository.save(lexw);
-        aplicacaoRepository.save(gcti);
-        aplicacaoRepository.save(vdol);
-        aplicacaoRepository.save(vprs);
-        aplicacaoRepository.save(sares);
-        aplicacaoRepository.save(sareg);
+        aplicacao1.setLancamentosHoras(new ArrayList<>(lancamentosHoras));
+        aplicacao2.setLancamentosHoras(new ArrayList<>(lancamentosHoras));
 
+        // Persistir as aplicações
+        aplicacaoRepository.saveAndFlush(aplicacao1);
+        aplicacaoRepository.saveAndFlush(aplicacao2);
     }
+
+
 
 }

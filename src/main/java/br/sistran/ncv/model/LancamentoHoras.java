@@ -1,13 +1,15 @@
 package br.sistran.ncv.model;
 
-
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 @Entity
 public class LancamentoHoras {
@@ -57,6 +59,32 @@ public class LancamentoHoras {
 
     public LocalDate getDataLancamento() {
         return dataLancamento;
+    }
+
+    // Método para definir a data com validação
+    @JsonSetter("dataLancamento")
+    public void setDataLancamento(String dataLancamento) {
+        DateTimeFormatter expectedFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter alternativeFormatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter alternativeFormatter2 = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+
+        try {
+            // Tenta o formato esperado primeiro
+            this.dataLancamento = LocalDate.parse(dataLancamento, expectedFormatter);
+        } catch (DateTimeParseException e1) {
+            try {
+                // Tenta outro formato (ISO-8601)
+                this.dataLancamento = LocalDate.parse(dataLancamento, alternativeFormatter1);
+            } catch (DateTimeParseException e2) {
+                try {
+                    // Tenta mais um formato alternativo
+                    this.dataLancamento = LocalDate.parse(dataLancamento, alternativeFormatter2);
+                } catch (DateTimeParseException e3) {
+                    // Define uma data padrão ou lança uma exceção personalizada
+                    this.dataLancamento = null; // ou LocalDate.now()
+                }
+            }
+        }
     }
 
     public void setDataLancamento(LocalDate dataLancamento) {
