@@ -2,7 +2,7 @@ package br.sistran.ncv.controller;
 
 import br.sistran.ncv.model.Aplicacao;
 import br.sistran.ncv.service.AplicacaoService;
-import br.sistran.ncv.service.ExcelService;
+import br.sistran.ncv.service.ApontamentoExcelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,22 +17,22 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/resources")
-public class ExcelController {
+public class ApontamentoExcelController {
 
     @Autowired
     private AplicacaoService aplicacaoService;
 
     @Autowired
-    private ExcelService excelService;
+    private ApontamentoExcelService apontamentoExcelService;
 
-    @GetMapping("/estado-atual")
-    public ResponseEntity<byte[]> gerarExcelAplicacoes() {
+    @GetMapping("/metricas")
+    public ResponseEntity<byte[]> gerarRelatorioApontamentos() {
         List<Aplicacao> aplicacoes = aplicacaoService.findAll();
 
-        byte[] excelBytes = excelService.gerarExcelAplicacoes(aplicacoes);
+        byte[] excelBytes = apontamentoExcelService.gerarExcelRelatorio(aplicacoes);
 
         String dataAtual = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        String nomeArquivo = String.format("status_aplicacoes_%s.xlsx", dataAtual);
+        String nomeArquivo = String.format("relatorio_apontamentos_%s.xlsx", dataAtual);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Disposition", "attachment; filename=" + nomeArquivo);
@@ -40,7 +40,5 @@ public class ExcelController {
 
         return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
     }
-
-
-
 }
+

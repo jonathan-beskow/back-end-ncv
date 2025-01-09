@@ -1,11 +1,11 @@
 package br.sistran.ncv.controller;
 
 import br.sistran.ncv.model.Aplicacao;
-import br.sistran.ncv.model.Apontamento;
 import br.sistran.ncv.model.LancamentoHoras;
 import br.sistran.ncv.model.enums.TipoApontamento;
 import br.sistran.ncv.service.AplicacaoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -36,13 +36,51 @@ public class AplicacaoController {
     }
 
     // Adicionar apontamento
+//    @PostMapping("/{id}/apontamentos")
+//    public ResponseEntity<Void> adicionarApontamento(
+//            @PathVariable Long id,
+//            @RequestBody Map<String, Object> apontamentoData
+//    ) {
+//        System.out.println("Chegou no add apontamentos");
+//        Long idApontamento = Long.valueOf(apontamentoData.get("id").toString());
+//        Integer quantidade = Integer.valueOf(apontamentoData.get("quantidade").toString());
+//        aplicacaoService.adicionarApontamento(id, quantidade);
+//        return ResponseEntity.noContent().build();
+//    }
+
     @PostMapping("/{id}/apontamentos")
-    public ResponseEntity<Void> adicionarApontamento(
-            @PathVariable Long id,
-            @RequestBody Apontamento apontamento
-    ) {
-        aplicacaoService.adicionarApontamento(id, apontamento.getTipo(), apontamento.getQuantidade());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<String> adicionarApontamento(
+            @PathVariable("id") Long idAplicacao,
+            @RequestBody Map<String, Object> requestBody) {
+        try {
+            // Extrair valores do corpo da requisição
+            Integer tipoId = (Integer) requestBody.get("id");
+            Integer quantidade = (Integer) requestBody.get("quantidade");
+
+            // Converter o ID do tipo para TipoApontamento
+            TipoApontamento tipoApontamento = converterTipoApontamento(tipoId);
+
+            // Chamar o serviço para adicionar o apontamento
+            aplicacaoService.adicionarApontamento(idAplicacao, tipoApontamento, quantidade);
+
+            return ResponseEntity.ok("Apontamento adicionado com sucesso.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Tipo de apontamento inválido: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao adicionar apontamento: " + e.getMessage());
+        }
+    }
+
+    private TipoApontamento converterTipoApontamento(Integer tipoId) {
+        return switch (tipoId) {
+            case 1 -> TipoApontamento.CRITICO;
+            case 2 -> TipoApontamento.ALTO;
+            case 3 -> TipoApontamento.MEDIO;
+            case 4 -> TipoApontamento.BAIXO;
+            default -> throw new IllegalArgumentException("ID do tipo inválido: " + tipoId);
+        };
     }
 
 
@@ -50,25 +88,15 @@ public class AplicacaoController {
     public ResponseEntity<Map<String, Integer>> atualizarApontamento(
             @PathVariable Long idAplicacao,
             @RequestBody Map<String, Object> body) {
-
-        // Validar se os campos 'id' e 'quantidade' estão presentes no corpo da requisição
         if (!body.containsKey("id") || !body.containsKey("quantidade")) {
             return ResponseEntity.badRequest().body(Map.of("erro", -1)); // Retorna um valor padrão inválido
         }
-
         try {
-            // Obter os valores do corpo da requisição
             Long idApontamento = Long.valueOf(body.get("id").toString());
             Integer novaQuantidade = Integer.valueOf(body.get("quantidade").toString());
-
-            // Chamar o método de atualização no serviço
             Map<String, Integer> apontamentosAtualizados = aplicacaoService.atualizarApontamentoPorId(idAplicacao, idApontamento, novaQuantidade);
-
-            // Retornar os apontamentos atualizados
             return ResponseEntity.ok(apontamentosAtualizados);
-
         } catch (Exception e) {
-            // Retornar erro com valor padrão
             return ResponseEntity.badRequest().body(Map.of("erro", -1));
         }
     }
@@ -126,7 +154,6 @@ public class AplicacaoController {
     @GetMapping(value = "/{id}")
     public ResponseEntity<Aplicacao> findById(@PathVariable Long id) {
         var obj = aplicacaoService.findById(id);
-        System.out.println("chegou no find by id");
         return ResponseEntity.ok(obj);
     }
 

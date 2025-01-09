@@ -7,6 +7,10 @@ import br.sistran.ncv.model.HistoricoDeMudanca;
 import br.sistran.ncv.model.LancamentoHoras;
 import br.sistran.ncv.model.enums.TipoApontamento;
 import br.sistran.ncv.repository.AplicacaoRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +24,12 @@ public class AplicacaoService {
 
     @Autowired
     private AplicacaoRepository aplicacaoRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    Logger logger = LoggerFactory.getLogger(AplicacaoService.class);
+
 
     @Transactional
     public void adicionarHoras(Long id, LancamentoHoras lancamentoHoras) {
@@ -112,8 +122,26 @@ public class AplicacaoService {
 
     @Transactional
     public void adicionarApontamento(Long idAplicacao, TipoApontamento tipo, Integer quantidade) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(idAplicacao);
-        aplicacao.adicionarOuAtualizarApontamento(tipo, quantidade);
+        // Buscar a aplicação pelo ID
+        Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
+                .orElseThrow(() -> new IllegalArgumentException("Aplicação não encontrada com ID: " + idAplicacao));
+
+        // Adicionar ou atualizar o apontamento
+        Apontamento apontamentoExistente = aplicacao.getApontamentos().stream()
+                .filter(apontamento -> apontamento.getTipo().equals(tipo))
+                .findFirst()
+                .orElse(null);
+
+        if (apontamentoExistente != null) {
+            // Atualizar a quantidade existente
+            apontamentoExistente.setQuantidade(apontamentoExistente.getQuantidade() + quantidade);
+        } else {
+            // Criar um novo apontamento se não existir
+            Apontamento novoApontamento = new Apontamento(tipo, quantidade, aplicacao);
+            aplicacao.getApontamentos().add(novoApontamento);
+        }
+
+        // Salvar a aplicação com os apontamentos atualizados
         aplicacaoRepository.save(aplicacao);
     }
 

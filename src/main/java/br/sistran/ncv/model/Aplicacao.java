@@ -4,6 +4,7 @@ import br.sistran.ncv.model.enums.BSResponsavel;
 import br.sistran.ncv.model.enums.StatusAplicacao;
 import br.sistran.ncv.model.enums.TipoApontamento;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.persistence.*;
 
@@ -45,11 +46,13 @@ public class Aplicacao {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "aplicacao_id")
+    @JsonManagedReference
     private List<LancamentoHoras> lancamentosHoras = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "aplicacao_id") // Confirmação do relacionamento com a aplicação
+    @OneToMany(mappedBy = "aplicacao", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<Apontamento> apontamentos = new ArrayList<>();
+
 
     // Construtores
     public Aplicacao() {
@@ -242,5 +245,17 @@ public class Aplicacao {
 
     public void setHistoricoDeMudanca(List<HistoricoDeMudanca> historicoDeMudanca) {
         this.historicoDeMudanca = historicoDeMudanca;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Aplicacao aplicacao)) return false;
+        return Objects.equals(getId(), aplicacao.getId()) && Objects.equals(getNomeAplicacao(), aplicacao.getNomeAplicacao()) && Objects.equals(getDataChegada(), aplicacao.getDataChegada()) && Objects.equals(getRepositorio(), aplicacao.getRepositorio()) && Objects.equals(getIc(), aplicacao.getIc()) && Objects.equals(getHistoricoDeMudanca(), aplicacao.getHistoricoDeMudanca()) && Objects.equals(getBsResponsavelCodigo(), aplicacao.getBsResponsavelCodigo()) && Objects.equals(getStatusAplicacaoCodigo(), aplicacao.getStatusAplicacaoCodigo()) && Objects.equals(bsResponsavelNome, aplicacao.bsResponsavelNome) && Objects.equals(getStatusAplicacaoDescricao(), aplicacao.getStatusAplicacaoDescricao()) && Objects.equals(getLancamentosHoras(), aplicacao.getLancamentosHoras()) && Objects.equals(getApontamentos(), aplicacao.getApontamentos());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getNomeAplicacao(), getDataChegada(), getRepositorio(), getIc(), getHistoricoDeMudanca(), getBsResponsavelCodigo(), getStatusAplicacaoCodigo(), bsResponsavelNome, getStatusAplicacaoDescricao(), getLancamentosHoras(), getApontamentos());
     }
 }

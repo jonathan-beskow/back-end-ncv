@@ -65,7 +65,6 @@ public class HistoricoDeMudanca {
         this.data = data;
     }
 
-    // Exibe a descrição no JSON
     public String getStatusDescricao() {
         if (status != null) {
             return StatusAplicacao.toEnum(status).getDescricao();

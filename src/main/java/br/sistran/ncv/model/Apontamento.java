@@ -1,6 +1,7 @@
 package br.sistran.ncv.model;
 
 import br.sistran.ncv.model.enums.TipoApontamento;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 import java.util.Objects;
@@ -19,7 +20,9 @@ public class Apontamento {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "aplicacao_id", nullable = false)
+    @JsonBackReference
     private Aplicacao aplicacao;
+
 
     // Construtor padrão: Inicializa quantidade como 0
     public Apontamento() {

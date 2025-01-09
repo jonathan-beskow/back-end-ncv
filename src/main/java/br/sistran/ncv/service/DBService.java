@@ -65,10 +65,10 @@ public class DBService {
         aplicacaoRepository.saveAndFlush(aplicacao2);
 
         // Adicionar apontamentos às aplicações
-        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.CRITICO, 1500);
-        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.ALTO, 600);
-        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.MEDIO, 150);
-        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.BAIXO, 2000);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.CRITICO, 0);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.ALTO, 0);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.MEDIO, 0);
+        aplicacao1.adicionarOuAtualizarApontamento(TipoApontamento.BAIXO, 0);
 
         aplicacao2.adicionarOuAtualizarApontamento(TipoApontamento.CRITICO, 700);
         aplicacao2.adicionarOuAtualizarApontamento(TipoApontamento.ALTO, 350);
