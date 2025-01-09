@@ -46,7 +46,7 @@ public class Aplicacao {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "aplicacao_id")
-    @JsonManagedReference
+    //@JsonManagedReference
     private List<LancamentoHoras> lancamentosHoras = new ArrayList<>();
 
     @OneToMany(mappedBy = "aplicacao", cascade = CascadeType.ALL, orphanRemoval = true)
