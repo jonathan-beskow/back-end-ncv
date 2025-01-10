@@ -1,6 +1,12 @@
 package br.sistran.ncv.service;
 
+import br.sistran.ncv.dto.AplicacaoDTO;
+import br.sistran.ncv.dto.ApontamentoDTO;
+import br.sistran.ncv.dto.LancamentoHorasDTO;
 import br.sistran.ncv.exception.ObjectNotFoundException;
+import br.sistran.ncv.mapper.AplicacaoMapper;
+import br.sistran.ncv.mapper.ApontamentoMapper;
+import br.sistran.ncv.mapper.LancamentoHorasMapper;
 import br.sistran.ncv.model.Aplicacao;
 import br.sistran.ncv.model.Apontamento;
 import br.sistran.ncv.model.HistoricoDeMudanca;
@@ -16,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,64 +38,110 @@ public class AplicacaoService {
 
     Logger logger = LoggerFactory.getLogger(AplicacaoService.class);
 
-
     @Transactional
-    public void adicionarHoras(Long id, LancamentoHoras lancamentoHoras) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(id);
+    public void adicionarHoras(Long id, LancamentoHorasDTO lancamentoHorasDTO) {
+        // Valida e converte a data
+        LocalDate dataLancamento = validarEConverterData(lancamentoHorasDTO.getDataLancamento().toString());
+        lancamentoHorasDTO.setDataLancamento(dataLancamento); // Atualiza o DTO com a data válida
+
+        // Recupera a AplicacaoDTO e converte para entidade
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(id);
+        Aplicacao aplicacao = AplicacaoMapper.toEntity(aplicacaoDTO);
+
+        // Converte o DTO para entidade
+        LancamentoHoras lancamentoHoras = LancamentoHorasMapper.toEntity(lancamentoHorasDTO);
+
+        // Adiciona as horas à aplicação
         aplicacao.adicionarHoras(
                 lancamentoHoras.getDesenvolvedor(),
                 lancamentoHoras.getHoras(),
-                lancamentoHoras.getDataLancamento()
+                dataLancamento
         );
+
+        // Salva a aplicação atualizada
         aplicacaoRepository.save(aplicacao);
     }
 
+
     public Double getHorasTotais(Long id) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(id);
-        return aplicacao.getHorasTotais();
+        // Recupera o AplicacaoDTO diretamente
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(id);
+
+        // Retorna o total de horas diretamente do DTO
+        return aplicacaoDTO.getHorasTotais();
     }
+
 
     public Map<String, Double> getHorasPorDesenvolvedor(Long id) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(id);
-        return aplicacao.getHorasPorDesenvolvedor();
+        // Obtém o AplicacaoDTO diretamente
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(id);
+
+        // Calcula as horas por desenvolvedor utilizando o DTO
+        return aplicacaoDTO.getLancamentosHoras().stream()
+                .collect(Collectors.groupingBy(
+                        LancamentoHorasDTO::getDesenvolvedor,
+                        Collectors.summingDouble(LancamentoHorasDTO::getHoras)
+                ));
     }
 
+
     public Map<String, Map<Double, List<LocalDate>>> getHorasDetalhadasPorDesenvolvedor(Long id) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(id);
-        return aplicacao.getLancamentosHoras().stream()
+        // Recupera o AplicacaoDTO diretamente
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(id);
+
+        // Processa os detalhes das horas utilizando o DTO
+        return aplicacaoDTO.getLancamentosHoras().stream()
                 .collect(Collectors.groupingBy(
-                        LancamentoHoras::getDesenvolvedor,
+                        LancamentoHorasDTO::getDesenvolvedor,
                         Collectors.groupingBy(
-                                LancamentoHoras::getHoras,
-                                Collectors.mapping(LancamentoHoras::getDataLancamento, Collectors.toList())
+                                LancamentoHorasDTO::getHoras,
+                                Collectors.mapping(LancamentoHorasDTO::getDataLancamento, Collectors.toList())
                         )
                 ));
     }
 
-    public Aplicacao findById(Long id) {
+
+    public AplicacaoDTO findById(Long id) {
+        // Recupera o AplicacaoDTO diretamente
         return buscarAplicacaoPorId(id);
     }
 
-    public List<Aplicacao> findAll() {
-        return aplicacaoRepository.findAll();
+
+    public List<AplicacaoDTO> findAll() {
+        List<Aplicacao> aplicacoes = aplicacaoRepository.findAll();
+        return aplicacoes.stream()
+                .map(AplicacaoMapper::toDTO) // Converte cada entidade para DTO
+                .collect(Collectors.toList());
     }
 
+
     @Transactional
-    public Aplicacao create(Aplicacao aplicacao) {
+    public AplicacaoDTO create(AplicacaoDTO aplicacaoDTO) {
+        Aplicacao aplicacao = AplicacaoMapper.toEntity(aplicacaoDTO);
+
         HistoricoDeMudanca emDesenvolvimento = new HistoricoDeMudanca(0, LocalDate.now());
         aplicacao.adicionarHistorico(emDesenvolvimento.getStatus(), emDesenvolvimento.getData());
         aplicacao.setId(null);
-        return aplicacaoRepository.save(aplicacao);
+        Aplicacao savedAplicacao = aplicacaoRepository.save(aplicacao);
+        return AplicacaoMapper.toDTO(savedAplicacao);
     }
 
-    @Transactional
-    public Aplicacao update(Long id, Aplicacao aplicacao) {
-        Aplicacao newObj = buscarAplicacaoPorId(id);
 
+    @Transactional
+    public AplicacaoDTO update(Long id, AplicacaoDTO aplicacaoDTO) {
+        // Recupera a entidade Aplicacao pelo ID diretamente do repositório
+        Aplicacao newObj = aplicacaoRepository.findById(id)
+                .orElseThrow(() -> new ObjectNotFoundException("Aplicação não encontrada!"));
+
+        // Converte o DTO recebido para a entidade
+        Aplicacao aplicacao = AplicacaoMapper.toEntity(aplicacaoDTO);
+
+        // Atualiza o histórico de mudanças se o status foi alterado
         if (!Objects.equals(newObj.getStatusAplicacaoCodigo(), aplicacao.getStatusAplicacaoCodigo())) {
             newObj.adicionarHistorico(aplicacao.getStatusAplicacaoCodigo(), LocalDate.now());
         }
 
+        // Atualiza os campos da entidade
         newObj.setNomeAplicacao(aplicacao.getNomeAplicacao());
         newObj.setIc(aplicacao.getIc());
         newObj.setRepositorio(aplicacao.getRepositorio());
@@ -95,49 +149,70 @@ public class AplicacaoService {
         newObj.setStatusAplicacaoCodigo(aplicacao.getStatusAplicacaoCodigo());
         newObj.setBsResponsavelCodigo(aplicacao.getBsResponsavelCodigo());
 
-        return aplicacaoRepository.saveAndFlush(newObj);
+        // Salva as alterações no banco de dados
+        Aplicacao updatedAplicacao = aplicacaoRepository.saveAndFlush(newObj);
+
+        // Converte a entidade atualizada de volta para DTO e retorna
+        return AplicacaoMapper.toDTO(updatedAplicacao);
     }
+
 
     @Transactional
-    public void delete(Long id) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(id);
+    public AplicacaoDTO delete(Long id) {
+        // Recupera a entidade Aplicacao pelo ID diretamente do repositório
+        Aplicacao aplicacao = aplicacaoRepository.findById(id)
+                .orElseThrow(() -> new ObjectNotFoundException("Aplicação não encontrada!"));
+
+        // Converte a entidade para DTO antes de deletar
+        AplicacaoDTO aplicacaoDTO = AplicacaoMapper.toDTO(aplicacao);
+
+        // Realiza a exclusão no repositório
         aplicacaoRepository.delete(aplicacao);
+
+        // Retorna o DTO da aplicação excluída
+        return aplicacaoDTO;
     }
+
 
     public int contarTotalApontamentos(Long idAplicacao) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(idAplicacao);
-        return aplicacao.contarTotalApontamentos();
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(idAplicacao);
+        return aplicacaoDTO.getApontamentos().stream()
+                .mapToInt(ApontamentoDTO::getQuantidade)
+                .sum();
     }
 
-    public Map<TipoApontamento, Integer> contarApontamentosPorTipo(Long idAplicacao) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(idAplicacao);
 
-        // Filtra os apontamentos apenas da aplicação atual e agrupa por tipo
-        return aplicacao.getApontamentos().stream()
+    public Map<TipoApontamento, Integer> contarApontamentosPorTipo(Long idAplicacao) {
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(idAplicacao);
+        return aplicacaoDTO.getApontamentos().stream()
                 .collect(Collectors.groupingBy(
-                        Apontamento::getTipo,
-                        Collectors.summingInt(Apontamento::getQuantidade)
+                        ApontamentoDTO::getTipo,
+                        Collectors.summingInt(ApontamentoDTO::getQuantidade)
                 ));
     }
 
+
     @Transactional
-    public void adicionarApontamento(Long idAplicacao, TipoApontamento tipo, Integer quantidade) {
+    public void adicionarApontamento(Long idAplicacao, ApontamentoDTO apontamentoDTO) {
         // Buscar a aplicação pelo ID
         Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
                 .orElseThrow(() -> new IllegalArgumentException("Aplicação não encontrada com ID: " + idAplicacao));
 
-        // Adicionar ou atualizar o apontamento
+        // Converte o DTO para a entidade
+        Apontamento novoApontamento = ApontamentoMapper.toEntity(apontamentoDTO);
+
+        // Verifica se já existe um apontamento do mesmo tipo
         Apontamento apontamentoExistente = aplicacao.getApontamentos().stream()
-                .filter(apontamento -> apontamento.getTipo().equals(tipo))
+                .filter(apontamento -> apontamento.getTipo().equals(novoApontamento.getTipo()))
                 .findFirst()
                 .orElse(null);
 
         if (apontamentoExistente != null) {
-            // Atualizar a quantidade existente
-            apontamentoExistente.setQuantidade(apontamentoExistente.getQuantidade() + quantidade);
+            // Atualiza a quantidade existente
+            apontamentoExistente.setQuantidade(apontamentoExistente.getQuantidade() + novoApontamento.getQuantidade());
         } else {
-            // Criar um novo apontamento se não existir
-            Apontamento novoApontamento = new Apontamento(tipo, quantidade, aplicacao);
+            // Adiciona um novo apontamento se não existir
+            novoApontamento.setAplicacao(aplicacao); // Relaciona o novo apontamento à aplicação
             aplicacao.getApontamentos().add(novoApontamento);
         }
 
@@ -148,53 +223,90 @@ public class AplicacaoService {
 
     @Transactional
     public void removerApontamento(Long idAplicacao, Long idApontamento) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(idAplicacao);
-        boolean removed = aplicacao.getApontamentos().removeIf(a -> a.getId().equals(idApontamento));
+        // Recupera a entidade Aplicacao
+        Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
+                .orElseThrow(() -> new IllegalArgumentException("Aplicação não encontrada com ID: " + idAplicacao));
+
+        // Remove o apontamento pelo ID
+        boolean removed = aplicacao.getApontamentos().removeIf(apontamento -> apontamento.getId().equals(idApontamento));
         if (!removed) {
-            throw new IllegalArgumentException("Apontamento não encontrado.");
+            throw new IllegalArgumentException("Apontamento não encontrado com ID: " + idApontamento);
         }
+
+        // Salva a aplicação atualizada
         aplicacaoRepository.save(aplicacao);
     }
 
+
     @Transactional
     public Map<String, Integer> atualizarApontamentoPorId(Long idAplicacao, Long idApontamento, Integer novaQuantidade) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(idAplicacao);
+        // Recupera a entidade Aplicacao
+        Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
+                .orElseThrow(() -> new IllegalArgumentException("Aplicação não encontrada com ID: " + idAplicacao));
 
-        // Buscar o apontamento pelo ID
+        // Busca o apontamento pelo ID
         Apontamento apontamentoExistente = aplicacao.getApontamentos().stream()
                 .filter(apontamento -> apontamento.getId().equals(idApontamento))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Apontamento com ID " + idApontamento + " não encontrado."));
 
-        // Atualizar a quantidade do apontamento
+        // Atualiza a quantidade do apontamento
         apontamentoExistente.setQuantidade(novaQuantidade);
 
-        // Salvar a aplicação com os apontamentos atualizados
+        // Salva as alterações no banco
         aplicacaoRepository.saveAndFlush(aplicacao);
 
-        // Recalcular os apontamentos agrupados por tipo
-        Map<TipoApontamento, Integer> apontamentosPorTipo = aplicacao.getApontamentos().stream()
+        // Recalcula os apontamentos agrupados por tipo utilizando DTOs
+        AplicacaoDTO aplicacaoDTO = AplicacaoMapper.toDTO(aplicacao);
+
+        Map<TipoApontamento, Integer> apontamentosPorTipo = aplicacaoDTO.getApontamentos().stream()
                 .collect(Collectors.groupingBy(
-                        Apontamento::getTipo,
-                        Collectors.summingInt(Apontamento::getQuantidade)
+                        ApontamentoDTO::getTipo,
+                        Collectors.summingInt(ApontamentoDTO::getQuantidade)
                 ));
 
-        // Organizar o resultado na ordem desejada
+        // Organiza o resultado na ordem desejada
         Map<String, Integer> apontamentosOrdenados = new LinkedHashMap<>();
         apontamentosOrdenados.put("CRITICO", apontamentosPorTipo.getOrDefault(TipoApontamento.CRITICO, 0));
         apontamentosOrdenados.put("ALTO", apontamentosPorTipo.getOrDefault(TipoApontamento.ALTO, 0));
         apontamentosOrdenados.put("MEDIO", apontamentosPorTipo.getOrDefault(TipoApontamento.MEDIO, 0));
         apontamentosOrdenados.put("BAIXO", apontamentosPorTipo.getOrDefault(TipoApontamento.BAIXO, 0));
 
-        // Retornar os apontamentos atualizados
         return apontamentosOrdenados;
     }
 
 
-    private Aplicacao buscarAplicacaoPorId(Long id) {
-        return aplicacaoRepository.findById(id)
-                .orElseThrow(() -> new ObjectNotFoundException("Aplicação não encontrada!"));
+    public Map<String, Double> relacionarHorasPorApontamentosResolvidos(Long id) {
+        // Busca a entidade e converte para DTO
+        AplicacaoDTO aplicacaoDTO = buscarAplicacaoPorId(id);
+
+        // Obtém os valores necessários a partir do DTO
+        double totalHorasConsumidas = aplicacaoDTO.getHorasTotais();
+        int totalApontamentosResolvidos = aplicacaoDTO.getApontamentos().stream()
+                .mapToInt(ApontamentoDTO::getQuantidade)
+                .sum();
+
+        // Calcula as horas por apontamento
+        double horasPorApontamento = totalApontamentosResolvidos > 0
+                ? totalHorasConsumidas / totalApontamentosResolvidos
+                : 0.0;
+
+        // Cria o mapa de retorno
+        Map<String, Double> relacao = new HashMap<>();
+        relacao.put("TotalHorasConsumidas", totalHorasConsumidas);
+        relacao.put("TotalApontamentosResolvidos", (double) totalApontamentosResolvidos);
+        relacao.put("HorasPorApontamento", horasPorApontamento);
+
+        return relacao;
     }
+
+
+    private AplicacaoDTO buscarAplicacaoPorId(Long id) {
+        Aplicacao aplicacao = aplicacaoRepository.findById(id)
+                .orElseThrow(() -> new ObjectNotFoundException("Aplicação não encontrada!"));
+        return AplicacaoMapper.toDTO(aplicacao);
+    }
+
 
     public static LocalDate populaDate(Aplicacao aplicacao) {
         return Optional.ofNullable(aplicacao.getDataChegada()).orElse(LocalDate.now());
@@ -204,24 +316,28 @@ public class AplicacaoService {
         return Optional.ofNullable(aplicacao.getStatusAplicacaoCodigo()).orElse(0);
     }
 
-    public Map<String, Double> relacionarHorasPorApontamentosResolvidos(Long id) {
-        Aplicacao aplicacao = buscarAplicacaoPorId(id);
+    private LocalDate validarEConverterData(String dataLancamento) {
+        // Lista de formatos aceitos
+        List<DateTimeFormatter> formatters = List.of(
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+                DateTimeFormatter.ofPattern("MM-dd-yyyy"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("MM/dd/yyyy")
+        );
 
-        double totalHorasConsumidas = aplicacao.getHorasTotais();
-        int totalApontamentosResolvidos = aplicacao.getApontamentos().stream()
-                .mapToInt(Apontamento::getQuantidade)
-                .sum();
+        // Itera pelos formatos e tenta parsear
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                return LocalDate.parse(dataLancamento, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Continua para o próximo formato
+            }
+        }
 
-        double horasPorApontamento = totalApontamentosResolvidos > 0
-                ? totalHorasConsumidas / totalApontamentosResolvidos
-                : 0.0;
-
-        Map<String, Double> relacao = new HashMap<>();
-        relacao.put("TotalHorasConsumidas", totalHorasConsumidas);
-        relacao.put("TotalApontamentosResolvidos", (double) totalApontamentosResolvidos);
-        relacao.put("HorasPorApontamento", horasPorApontamento);
-
-        return relacao;
+        // Se nenhum formato for válido, lança exceção
+        throw new IllegalArgumentException("Data inválida fornecida: " + dataLancamento);
     }
+
 
 }

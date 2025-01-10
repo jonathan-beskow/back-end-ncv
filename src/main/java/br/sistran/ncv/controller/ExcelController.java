@@ -1,5 +1,7 @@
 package br.sistran.ncv.controller;
 
+import br.sistran.ncv.dto.AplicacaoDTO;
+import br.sistran.ncv.mapper.AplicacaoMapper;
 import br.sistran.ncv.model.Aplicacao;
 import br.sistran.ncv.service.AplicacaoService;
 import br.sistran.ncv.service.ExcelService;
@@ -27,10 +29,18 @@ public class ExcelController {
 
     @GetMapping("/estado-atual")
     public ResponseEntity<byte[]> gerarExcelAplicacoes() {
-        List<Aplicacao> aplicacoes = aplicacaoService.findAll();
+        // Recupera a lista de AplicacaoDTOs
+        List<AplicacaoDTO> aplicacoesDTO = aplicacaoService.findAll();
 
+        // Converte os DTOs para entidades Aplicacao
+        List<Aplicacao> aplicacoes = aplicacoesDTO.stream()
+                .map(AplicacaoMapper::toEntity)
+                .toList();
+
+        // Gera o arquivo Excel
         byte[] excelBytes = excelService.gerarExcelAplicacoes(aplicacoes);
 
+        // Configura o nome do arquivo e os cabeçalhos HTTP
         String dataAtual = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String nomeArquivo = String.format("status_aplicacoes_%s.xlsx", dataAtual);
 
@@ -38,9 +48,9 @@ public class ExcelController {
         headers.add("Content-Disposition", "attachment; filename=" + nomeArquivo);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
 
+        // Retorna o arquivo Excel gerado
         return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
     }
-
 
 
 }

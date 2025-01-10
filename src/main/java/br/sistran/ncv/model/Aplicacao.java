@@ -46,12 +46,20 @@ public class Aplicacao {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "aplicacao_id")
-    //@JsonManagedReference
     private List<LancamentoHoras> lancamentosHoras = new ArrayList<>();
 
     @OneToMany(mappedBy = "aplicacao", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Apontamento> apontamentos = new ArrayList<>();
+
+    // Construtores, outros métodos omitidos para brevidade
+
+    public String getBsResponsavelNome() {
+        if (bsResponsavelCodigo != null) {
+            return BSResponsavel.toEnum(bsResponsavelCodigo).getNomeResponsavel();
+        }
+        return null;
+    }
 
 
     // Construtores

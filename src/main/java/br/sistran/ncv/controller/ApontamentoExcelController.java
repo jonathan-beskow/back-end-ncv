@@ -1,5 +1,7 @@
 package br.sistran.ncv.controller;
 
+import br.sistran.ncv.dto.AplicacaoDTO;
+import br.sistran.ncv.mapper.AplicacaoMapper;
 import br.sistran.ncv.model.Aplicacao;
 import br.sistran.ncv.service.AplicacaoService;
 import br.sistran.ncv.service.ApontamentoExcelService;
@@ -27,7 +29,10 @@ public class ApontamentoExcelController {
 
     @GetMapping("/metricas")
     public ResponseEntity<byte[]> gerarRelatorioApontamentos() {
-        List<Aplicacao> aplicacoes = aplicacaoService.findAll();
+        List<AplicacaoDTO> aplicacoesDTO = aplicacaoService.findAll();
+        List<Aplicacao> aplicacoes = aplicacoesDTO.stream()
+                .map(AplicacaoMapper::toEntity)
+                .toList();
 
         byte[] excelBytes = apontamentoExcelService.gerarExcelRelatorio(aplicacoes);
 
@@ -37,8 +42,9 @@ public class ApontamentoExcelController {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Disposition", "attachment; filename=" + nomeArquivo);
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
-
+        
         return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
     }
+
 }
 
