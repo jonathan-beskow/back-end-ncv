@@ -2,9 +2,15 @@ package br.sistran.ncv.service;
 
 import br.sistran.ncv.dto.AplicacaoDTO;
 import br.sistran.ncv.dto.ApontamentoDTO;
+import br.sistran.ncv.model.Apontamento;
+import br.sistran.ncv.model.HistoricoApontamento;
 import br.sistran.ncv.model.enums.TipoApontamento;
+import br.sistran.ncv.repository.ApontamentoRepository;
+import br.sistran.ncv.repository.HistoricoApontamentoRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,12 +20,34 @@ import java.util.stream.Collectors;
 @Service
 public class ApontamentoService {
 
-    /**
-     * Calcula os segundos gastos por apontamento resolvido para cada aplicação.
-     *
-     * @param aplicacoesDTO Lista de aplicações (DTO).
-     * @return Mapa contendo os apontamentos e o tempo médio de resolução em segundos.
-     */
+    @Autowired
+    private HistoricoApontamentoRepository historicoApontamentoRepository;
+
+    @Autowired
+    private ApontamentoRepository apontamentoRepository;
+
+    public void salvarSnapshot(LocalDate data) {
+        List<Apontamento> apontamentos = apontamentoRepository.findAll();
+        List<HistoricoApontamento> historicoApontamentos = apontamentos.stream()
+                .map(apontamento -> new HistoricoApontamento(
+                        apontamento.getTipo(), // Tipo do apontamento
+                        apontamento.getQuantidade(), // Quantidade do apontamento
+                        apontamento.getAplicacao(), // Aplicação associada
+                        data // Data do snapshot
+                ))
+                .collect(Collectors.toList());
+        historicoApontamentoRepository.saveAll(historicoApontamentos);
+    }
+
+
+    public long calcularSegundos(Double horasTotais, Integer quantidade) {
+        if (horasTotais == null || quantidade == null || quantidade == 0) {
+            return 0;
+        }
+        return Math.round((horasTotais * 3600) / quantidade);
+    }
+
+
     public Map<AplicacaoDTO, Map<TipoApontamento, Long>> calcularSegundosPorApontamento(List<AplicacaoDTO> aplicacoesDTO) {
         Map<AplicacaoDTO, Map<TipoApontamento, Long>> resultado = new HashMap<>();
 
@@ -35,12 +63,6 @@ public class ApontamentoService {
         return resultado;
     }
 
-    /**
-     * Calcula a média de segundos gastos por tipo de apontamento em todas as aplicações.
-     *
-     * @param aplicacoesDTO Lista de aplicações (DTO).
-     * @return Mapa com o tipo de apontamento e a média de segundos por apontamento.
-     */
     public Map<TipoApontamento, Double> calcularMediaSegundosPorTipo(List<AplicacaoDTO> aplicacoesDTO) {
         Map<TipoApontamento, List<Long>> temposPorTipo = new HashMap<>();
 
@@ -58,12 +80,6 @@ public class ApontamentoService {
                 ));
     }
 
-    /**
-     * Identifica os apontamentos mais demorados em termos de tempo de resolução.
-     *
-     * @param aplicacoesDTO Lista de aplicações (DTO).
-     * @return Lista de apontamentos (DTO) ordenados pelo maior tempo de resolução.
-     */
     public List<ApontamentoDTO> identificarApontamentosMaisDemorados(List<AplicacaoDTO> aplicacoesDTO) {
         return aplicacoesDTO.stream()
                 .flatMap(aplicacaoDTO -> aplicacaoDTO.getApontamentos().stream())
@@ -75,17 +91,8 @@ public class ApontamentoService {
     }
 
 
-    /**
-     * Calcula os segundos gastos para um apontamento.
-     *
-     * @param horasTotais Total de horas da aplicação.
-     * @param quantidade  Quantidade de apontamentos.
-     * @return Segundos por apontamento.
-     */
-    public long calcularSegundos(Double horasTotais, Integer quantidade) {
-        if (horasTotais == null || quantidade == null || quantidade == 0) {
-            return 0;
-        }
-        return Math.round((horasTotais * 3600) / quantidade);
-    }
+
+
+
+
 }

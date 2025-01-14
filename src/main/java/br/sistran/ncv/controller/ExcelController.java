@@ -27,6 +27,8 @@ public class ExcelController {
     @Autowired
     private ExcelService excelService;
 
+
+
     @GetMapping("/estado-atual")
     public ResponseEntity<byte[]> gerarExcelAplicacoes() {
         // Recupera a lista de AplicacaoDTOs
@@ -37,8 +39,12 @@ public class ExcelController {
                 .map(AplicacaoMapper::toEntity)
                 .toList();
 
+        // Credenciais para acessar o site
+        String username = "M272039"; // Substitua pelo valor correto ou obtenha dinamicamente
+        String password = "Sise1587";
+
         // Gera o arquivo Excel
-        byte[] excelBytes = excelService.gerarExcelAplicacoes(aplicacoes);
+        byte[] excelBytes = excelService.gerarExcelAplicacoes(aplicacoes, username, password);
 
         // Configura o nome do arquivo e os cabeçalhos HTTP
         String dataAtual = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));

@@ -5,12 +5,13 @@ import br.sistran.ncv.dto.ApontamentoDTO;
 import br.sistran.ncv.dto.LancamentoHorasDTO;
 import br.sistran.ncv.model.enums.TipoApontamento;
 import br.sistran.ncv.service.AplicacaoService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import javax.validation.Valid;
+
 import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;

@@ -40,6 +40,11 @@ public class HistoricoApontamento {
         this.data = data;
     }
 
+    // Método para obter o ID da aplicação
+    public Long getAplicacaoId() {
+        return aplicacao != null ? aplicacao.getId() : null;
+    }
+
     // Getters e Setters
     public Long getId() {
         return id;

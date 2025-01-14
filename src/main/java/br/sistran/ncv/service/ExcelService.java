@@ -13,7 +13,7 @@ import java.util.Map;
 @Service
 public class ExcelService {
 
-    public byte[] gerarExcelAplicacoes(List<Aplicacao> aplicacoes) {
+    public byte[] gerarExcelAplicacoes(List<Aplicacao> aplicacoes, String username, String password) {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Aplicações");
 
@@ -78,6 +78,7 @@ public class ExcelService {
             sheet.autoSizeColumn(0);
             sheet.autoSizeColumn(1);
             sheet.autoSizeColumn(2);
+            sheet.autoSizeColumn(3);
 
             // Retornar Excel como bytes
             try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {

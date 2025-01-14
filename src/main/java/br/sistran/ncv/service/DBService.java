@@ -1,11 +1,13 @@
 package br.sistran.ncv.service;
 
 import br.sistran.ncv.model.Aplicacao;
-import br.sistran.ncv.model.Apontamento;
+import br.sistran.ncv.model.HistoricoApontamento;
 import br.sistran.ncv.model.HistoricoDeMudanca;
 import br.sistran.ncv.model.LancamentoHoras;
 import br.sistran.ncv.model.enums.TipoApontamento;
 import br.sistran.ncv.repository.AplicacaoRepository;
+import br.sistran.ncv.repository.ApontamentoRepository;
+import br.sistran.ncv.repository.HistoricoApontamentoRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,12 @@ public class DBService {
 
     @Autowired
     private AplicacaoService aplicacaoService;
+
+    @Autowired
+    private ApontamentoRepository apontamentoRepository;
+
+    @Autowired
+    HistoricoApontamentoRepository historicoApontamentoRepository;
 
     @PostConstruct
     public void instanciaDB() {
@@ -44,7 +52,7 @@ public class DBService {
                 "LEXW-BsLexWeb",
                 now,
                 "http://svn.lexweb.com",
-                "http://ci.lexweb.com",
+                "https://ic.dsv.bradseg.com.br/build/job/LEXW-BsLexWeb-branch-2.1.85.1/",
                 0,
                 1,
                 historicoDeMudanca
@@ -55,7 +63,7 @@ public class DBService {
                 "VDOL-VendaOnline",
                 now,
                 "http://svn.vdol.com",
-                "http://ci.vdol.com",
+                "https://ic.dsv.bradseg.com.br/build/job/VDOL-VendaOnline-branch-1.15.20.2/",
                 1,
                 3,
                 historicoDeMudanca
@@ -81,8 +89,38 @@ public class DBService {
         // Persistir as aplicações
         aplicacaoRepository.saveAndFlush(aplicacao1);
         aplicacaoRepository.saveAndFlush(aplicacao2);
-    }
 
+        // Agendador Service
+        LocalDate segunda = now.with(java.time.DayOfWeek.MONDAY);
+        LocalDate sexta = now.with(java.time.DayOfWeek.FRIDAY);
+
+        List<HistoricoApontamento> historicoSegunda = List.of(
+                new HistoricoApontamento(TipoApontamento.CRITICO, 0, aplicacao1, segunda),
+                new HistoricoApontamento(TipoApontamento.ALTO, 0, aplicacao1, segunda),
+                new HistoricoApontamento(TipoApontamento.MEDIO, 0, aplicacao1, segunda),
+                new HistoricoApontamento(TipoApontamento.BAIXO, 0, aplicacao1, segunda),
+                new HistoricoApontamento(TipoApontamento.CRITICO, 700, aplicacao2, segunda),
+                new HistoricoApontamento(TipoApontamento.ALTO, 350, aplicacao2, segunda),
+                new HistoricoApontamento(TipoApontamento.MEDIO, 16, aplicacao2, segunda),
+                new HistoricoApontamento(TipoApontamento.BAIXO, 847, aplicacao2, segunda)
+        );
+
+        List<HistoricoApontamento> historicoSexta = List.of(
+                new HistoricoApontamento(TipoApontamento.CRITICO, 10, aplicacao1, sexta),
+                new HistoricoApontamento(TipoApontamento.ALTO, 5, aplicacao1, sexta),
+                new HistoricoApontamento(TipoApontamento.MEDIO, 3, aplicacao1, sexta),
+                new HistoricoApontamento(TipoApontamento.BAIXO, 1, aplicacao1, sexta),
+                new HistoricoApontamento(TipoApontamento.CRITICO, 750, aplicacao2, sexta),
+                new HistoricoApontamento(TipoApontamento.ALTO, 370, aplicacao2, sexta),
+                new HistoricoApontamento(TipoApontamento.MEDIO, 20, aplicacao2, sexta),
+                new HistoricoApontamento(TipoApontamento.BAIXO, 860, aplicacao2, sexta)
+        );
+
+        historicoApontamentoRepository.saveAll(historicoSegunda);
+        historicoApontamentoRepository.saveAll(historicoSexta);
+
+
+    }
 
 
 }
