@@ -79,7 +79,7 @@ public class AplicacaoController {
 
     @PostMapping("/{id}/horas")
     public ResponseEntity<Void> adicionarHoras(@PathVariable Long id, @RequestBody LancamentoHorasDTO lancamentoHorasDTO) {
-        aplicacaoService.adicionarHoras(id, lancamentoHorasDTO);
+        aplicacaoService.adicionarHorasNaAplicacao(id, lancamentoHorasDTO);
         return ResponseEntity.noContent().build();
     }
 

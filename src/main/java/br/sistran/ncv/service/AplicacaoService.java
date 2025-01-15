@@ -5,7 +5,6 @@ import br.sistran.ncv.dto.ApontamentoDTO;
 import br.sistran.ncv.dto.LancamentoHorasDTO;
 import br.sistran.ncv.exception.ObjectNotFoundException;
 import br.sistran.ncv.mapper.AplicacaoMapper;
-import br.sistran.ncv.mapper.ApontamentoMapper;
 import br.sistran.ncv.mapper.LancamentoHorasMapper;
 import br.sistran.ncv.model.Aplicacao;
 import br.sistran.ncv.model.Apontamento;
@@ -13,10 +12,8 @@ import br.sistran.ncv.model.HistoricoDeMudanca;
 import br.sistran.ncv.model.LancamentoHoras;
 import br.sistran.ncv.model.enums.TipoApontamento;
 import br.sistran.ncv.repository.AplicacaoRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import br.sistran.ncv.utils.DateParser;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,10 +30,43 @@ public class AplicacaoService {
     @Autowired
     private AplicacaoRepository aplicacaoRepository;
 
-    @PersistenceContext
-    private EntityManager entityManager;
 
-    Logger logger = LoggerFactory.getLogger(AplicacaoService.class);
+    @Transactional
+    public void adicionarHorasNaAplicacao(Long idAplicacao, LancamentoHorasDTO lancamentoHorasDTO) {
+        // Validar e converter a data do lançamento
+        LocalDate dataLancamento = DateParser.parseDate(lancamentoHorasDTO.getDataLancamento().toString());
+        lancamentoHorasDTO.setDataLancamento(dataLancamento);
+
+        // Buscar a aplicação pelo ID
+        Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
+                .orElseThrow(() -> new ObjectNotFoundException("Aplicação não encontrada com ID: " + idAplicacao));
+
+        // Validar os dados do DTO
+        if (lancamentoHorasDTO.getHoras() == null || lancamentoHorasDTO.getHoras() <= 0) {
+            throw new IllegalArgumentException("Horas devem ser um valor positivo.");
+        }
+        if (lancamentoHorasDTO.getDesenvolvedor() == null || lancamentoHorasDTO.getDesenvolvedor().isEmpty()) {
+            throw new IllegalArgumentException("O desenvolvedor não pode ser nulo ou vazio.");
+        }
+
+        // Criar uma nova entidade de LancamentoHoras
+        LancamentoHoras lancamentoHoras = new LancamentoHoras(
+                lancamentoHorasDTO.getDesenvolvedor(),
+                lancamentoHorasDTO.getHoras(),
+                dataLancamento
+        );
+
+        // Adicionar o lançamento de horas à aplicação
+        aplicacao.getLancamentosHoras().add(lancamentoHoras);
+
+        // Persistir as alterações na aplicação
+        aplicacaoRepository.saveAndFlush(aplicacao);
+    }
+
+
+
+
+
 
     @Transactional
     public void adicionarHoras(Long id, LancamentoHorasDTO lancamentoHorasDTO) {
@@ -192,32 +222,77 @@ public class AplicacaoService {
     }
 
 
+//    @Transactional
+//    public void adicionarApontamento(Long idAplicacao, ApontamentoDTO apontamentoDTO) {
+//        // Buscar a aplicação pelo ID
+//        Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
+//                .orElseThrow(() -> new IllegalArgumentException("Aplicação não encontrada com ID: " + idAplicacao));
+//
+//        // Converte o DTO para a entidade
+//        Apontamento novoApontamento = ApontamentoMapper.toEntity(apontamentoDTO);
+//
+//        // Verifica se já existe um apontamento do mesmo tipo
+//        Apontamento apontamentoExistente = aplicacao.getApontamentos().stream()
+//                .filter(apontamento -> apontamento.getTipo().equals(novoApontamento.getTipo()))
+//                .findFirst()
+//                .orElse(null);
+//
+//        if (apontamentoExistente != null) {
+//            // Atualiza a quantidade existente
+//            apontamentoExistente.setQuantidade(apontamentoExistente.getQuantidade() + novoApontamento.getQuantidade());
+//        } else {
+//            // Adiciona um novo apontamento se não existir
+//            novoApontamento.setAplicacao(aplicacao); // Relaciona o novo apontamento à aplicação
+//            aplicacao.getApontamentos().add(novoApontamento);
+//        }
+//
+//        // Salvar a aplicação com os apontamentos atualizados
+//        aplicacaoRepository.save(aplicacao);
+//    }
+
     @Transactional
     public void adicionarApontamento(Long idAplicacao, ApontamentoDTO apontamentoDTO) {
+        // Valida se o ID do tipo foi fornecido
+        if (apontamentoDTO.getId() == null) {
+            throw new IllegalArgumentException("O ID do tipo do apontamento não pode ser nulo.");
+        }
+
+        // Valida se a quantidade foi fornecida
+        int quantidade = (apontamentoDTO.getQuantidade() != null) ? apontamentoDTO.getQuantidade() : 0;
+
+
+        // Mapeia o ID para o enum TipoApontamento
+        TipoApontamento tipoApontamento = mapIdToTipoApontamento(apontamentoDTO.getId().intValue());
+        if (tipoApontamento == null) {
+            throw new IllegalArgumentException("ID inválido para tipo de apontamento: " + apontamentoDTO.getId());
+        }
+
         // Buscar a aplicação pelo ID
         Aplicacao aplicacao = aplicacaoRepository.findById(idAplicacao)
                 .orElseThrow(() -> new IllegalArgumentException("Aplicação não encontrada com ID: " + idAplicacao));
 
-        // Converte o DTO para a entidade
-        Apontamento novoApontamento = ApontamentoMapper.toEntity(apontamentoDTO);
-
-        // Verifica se já existe um apontamento do mesmo tipo
+        // Busca o apontamento existente pelo tipo
         Apontamento apontamentoExistente = aplicacao.getApontamentos().stream()
-                .filter(apontamento -> apontamento.getTipo().equals(novoApontamento.getTipo()))
+                .filter(apontamento -> apontamento.getTipo().equals(tipoApontamento))
                 .findFirst()
                 .orElse(null);
 
         if (apontamentoExistente != null) {
-            // Atualiza a quantidade existente
-            apontamentoExistente.setQuantidade(apontamentoExistente.getQuantidade() + novoApontamento.getQuantidade());
+            // Atualiza a quantidade do apontamento existente
+            apontamentoExistente.setQuantidade(apontamentoExistente.getQuantidade() + quantidade);
         } else {
-            // Adiciona um novo apontamento se não existir
-            novoApontamento.setAplicacao(aplicacao); // Relaciona o novo apontamento à aplicação
+            // Cria um novo apontamento e o adiciona à aplicação
+            Apontamento novoApontamento = new Apontamento();
+            novoApontamento.setTipo(tipoApontamento);
+            novoApontamento.setQuantidade(quantidade);
+            novoApontamento.setAplicacao(aplicacao);
+
+            // Adiciona o novo apontamento à lista de apontamentos da aplicação
             aplicacao.getApontamentos().add(novoApontamento);
         }
 
-        // Salvar a aplicação com os apontamentos atualizados
-        aplicacaoRepository.save(aplicacao);
+        // Salva a aplicação com os apontamentos atualizados
+        aplicacaoRepository.saveAndFlush(aplicacao);
     }
 
 
@@ -339,5 +414,20 @@ public class AplicacaoService {
         throw new IllegalArgumentException("Data inválida fornecida: " + dataLancamento);
     }
 
+    private TipoApontamento mapIdToTipoApontamento(int id) {
+        switch (id) {
+            case 1:
+                return TipoApontamento.CRITICO;
+            case 2:
+                return TipoApontamento.ALTO;
+            case 3:
+                return TipoApontamento.MEDIO;
+            case 4:
+                return TipoApontamento.BAIXO;
+            default:
+                throw new IllegalArgumentException("ID inválido para TipoApontamento: " + id);
+        }
 
+
+    }
 }
